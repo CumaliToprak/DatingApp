@@ -1,0 +1,364 @@
+= Build an app with ASPNET Core and Angular from scratch
+
+== Bölüm 1:Introduction
+
+To learn which version of dotnet sdk installed:
+dotnet --info
+To learn which versino of dotnet sdk in use:
+dotnet --version
+
+*NOT:* Node.js is javascript runtime. it is also package manager we can install package for angular.
+
+To learn which versin of node installed: node --version
+
+npm comes with installing node.js : npm --version
+
+*Postman:* an app to test by sending crud request to our api.
+
+*sqlitebrowser:* https://sqlitebrowser.org/dl/
+
+== Bölüm 2:Building a Walking Skeleton
+
+
+
+----
+inside desktop:
+$ mdkir datingApp
+$ cd datingApp
+to see help command for dotnet 
+$ dotnet -h
+to see help command for dotnet new
+$ dotnet new -h
+to create dotnet webapi project seperate from angular template(we will angular in our project in future using angular provided tool)
+$ dotnet new webapi -n DatingApp.API (-n === name)
+open the projent in vscode editor
+$ code .
+Note:if it dosent open inside vscode search on top section path and choose the first option to add vscode to path.
+----
+
+*Adding some extension:*
+
+. C# (Powered by OmniSharp)
+. C# extensions
+. NuGet Package Manager
+
+*Excluding(hiding not get riding of) obj and bin files from the project*
+
+we dont need to see obj and bin files in our project we can exclude them : setting Text Editor -> files -> Exclude section
+
+*To run our project after that:*
+
+----
+$ dotnet run
+----
+
+*To exclude https url from our project:*
+
+We dont handle security at the beginning of this course for that reason we can remove it: Properties -> launchSettings.json -> DatingApp.API -> applicationUrl 
+After that go to startup.cs file and comment 
+----
+// app.UseHttpsRedirection();
+----
+
+command.
+
+*launchSettings.json:* dotnet run yapıldığı zaman bu dosya da okunur.
+
+=== Running the DotNet Core application
+
+in the browser page:
+
+
+image::..\DatingApp\course-images\img3.png[]
+image::..\DatingApp\course-images\img4.png[]
+
+we used ValuesController datas using http reques on the browser.
+
+=== Using DotNet watch
+
+for not to do ctrl+c to updated changes and reload we can use the next command to handle it:  *dotnet watch run*
+
+=== Using production mode
+
+exception mesajlarını browserda kullanıcıdan gizlemek daha basit mesaj vermek için development mode yerine productin mod kullanılır. Bunu değiştirmek için: *properties-> launchSetting.json* 
+
+image::..\DatingApp\course-images\img5.png[]
+
+production olarak değiştirilir.
+
+*Not:* Exception mesajları browsera değil consola log olarak yansır. Ordan exception mesajlarını detaylı olarak görebiliriz.
+ 
+
+            
+
+== Creating the firs Model and DataContext
+
+we'll use entity fr. code first migration to store data
+
+*create models -> Value*
+
+----
+namespace DatingApp.API.models
+{
+    public class Value
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+    }
+}
+----
+
+*create data -> DataContext.cs*
+
+----
+using DatingApp.API.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace DatingApp.API.Data
+{
+    public class DataContext : DbContext //it is derived from Microsoft.EntityFrameworkCore. Need to include the library. 
+    {
+        public DataContext(DbContextOptions<DataContext> options) : base(options)
+        {
+        }
+
+        public DbSet<Value> Values { get; set; } // Values represents table name.
+    }
+}
+
+
+----
+
+to use DbContext class we should add  *Microsoft.EntityFrameworkCore* library using nuget package manager.
+
+*Finally* we export the class as service, to do that:
+in *Startup.cs*
+
+image::..\DatingApp\course-images\img6.png[]
+to use sqlite we should add  *Microsoft.EntityFrameworkCore.Sqlite* library using nuget package manager.
+
+*After adding libraries:*
+
+image::..\DatingApp\course-images\img7.png[]
+
+*Not:* By conventions we use title case for C# classes.
+
+*to install dotnet entity framework tool:* via terminal type
+
+== Creating the Database using Entity Framework migrations
+
+image::..\DatingApp\course-images\img8.png[]
+image::..\DatingApp\course-images\img9.png[]
+
+----
+dotnet install --global dotnet-ef
+dotnet-ef -h
+dotnet ef migration -h
+----
+
+*after the next command:*
+----
+dotnet ef migrations add InitialCreate
+----
+*we get the error:*
+----
+Your startup project 'DatingApp.API' doesn't reference Microsoft.EntityFrameworkCore.Design. This package is required for the Entity Framework Core Tools to work. Ensure your startup project is correct, install the package, and try again.
+----
+
+to solve that we copy the package reference and installed it using nuget package manager: *Microsoft.EntityFrameworkCore.Design*
+
+----
+dotnet ef migrations add InitialCreate
+----
+
+image::..\DatingApp\course-images\img10.png[]
+
+
+*the next command create the database:*
+
+image::..\DatingApp\course-images\img11.png[]
+
+
+*we'll open the datingapp.db using a tool(DB Browser for SQLite):*
+
+image::..\DatingApp\course-images\img12.png[]
+
+== Retrieving data from the Database
+
+inside Data -> DataContext.cs
+----
+before: 
+
+  // GET api/values
+        [HttpGet]
+        public ActionResult<IEnumerable<string>> Get()
+        {
+            return new string[] { "value1", "value32" };
+        }
+
+after:
+
+ public IActionResult GetValues()
+        {
+            var values = _context.Values.ToList();
+
+            return Ok(values); //http 200 ok respond
+        }
+
+----
+
+
+
+----
+before:
+
+
+after:
+
+ // GET api/values/5
+        [HttpGet("{id}")]
+        public IActionResult GetValue(int id)
+        {
+            var value = _context.Values.FirstOrDefault(x => x.Id == id);
+
+            return Ok(value);
+        }
+
+
+----
+
+*to run project:*
+----
+dotnet watch run
+----
+
+
+*open postman:*
+
+image::..\DatingApp\course-images\img15.png[]
+image::..\DatingApp\course-images\img13.png[]
+image::..\DatingApp\course-images\img14.png[]
+
+== Making our code asynchronous
+
+*inside ValuesController:*
+
+----
+        // GET api/values
+        [HttpGet]
+        public async Task<IActionResult> GetValues()
+        {
+            var values = await _context.Values.ToListAsync();
+
+            return Ok(values); //http 200 ok respond
+        }
+
+        // GET api/values/5
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetValue(int id)
+        {
+            var value = await _context.Values.FirstOrDefaultAsync(x => x.Id == id);
+
+            return Ok(value);
+        }
+----
+
+
+== Creating the Angular application using AngularCLI
+
+*https://cli.angular.io/*
+
+----
+inside our project:
+npm install -g @angular/cli
+ng new DatingApp-SPA
+cd DatingApp-SPA
+ng serve
+----
+
+image::..\DatingApp\course-images\img16.png[]
+
+== Adding VS Code extensions used in this course
+
+. Angular snippets - john papa
+. Angular files
+. Angular language service
+. Auto rename tag
+. Bracket pair colorizer
+. Debugger for chrome (we can debug our javascript code but this is really useful when we are in vscode)
+. Material icon theme   
+. Prettier - Code formatter
+. TSLint
+. angular2-switcher
+
+== 17. Making HTTP requests in Angular
+
+Using right click in the src -> app folder create the new component named 'value'.
+
+for automatically created the component references will be added to app.module.ts.
+
+*to making http request in angular we should do next steps:*
+
+image::Desktop\DatingApp\course-images\img17.png[]
+
+*inside app.module.ts:*
+
+image::Desktop\DatingApp\course-images\img18.png[]
+
+*after that inside app.component.html file we call app-value selector to view of value.component.html*
+
+image::Desktop\DatingApp\course-images\img19.png[]
+
+
+*we should run the project inside two seperate terminal:*
+----
+ng serve
+
+dotnet watch run
+----
+
+*if open browser and click inspect we get next error:*
+
+Access to XMLHttpRequest at 'http://localhost:5000/api/values' from origin 'http://localhost:4200' has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present on the requested resource.
+
+*NOT:* it is probably for angular do not know the domain name api has.
+
+== Adding CORS support to the API
+
+image::Desktop\DatingApp\course-images\img20.png[]
+image::Desktop\DatingApp\course-images\img21.png[]
+
+=> After doing them errors is gone.
+
+image::Desktop\DatingApp\course-images\img22.png[]
+
+== 17. Displaying data from the API on the html page
+
+image::Desktop\DatingApp\course-images\img23.png[]
+image::Desktop\DatingApp\course-images\img24.png[]
+
+== 18. Adding Bootstrap and Font-Awesome to our Angular app
+
+image::Desktop\DatingApp\course-images\img25.png[]
+
+== 19. Adding GIT for source control
+
+*in the DatingApp folder:*
+----
+git init
+----
+
+*in the DatingApp.API folder add .gitignore file, add the gitignore following lines:*
+
+----
+.vscode
+bin
+obj
+*.db
+----
+
+commit the change locally as 'Initial commit' on the left side bar.
+
+*go to the github and create new repository and get the remote address:*
+
+paste terminal inside your project directory
