@@ -10,6 +10,7 @@ namespace DatingApp.API.Data
         }
 
         public DbSet<Value> Values { get; set; } // Values represents table name.
+        public DbSet<User> Users { get; set; } //Users represent User table name
     }
 }
 

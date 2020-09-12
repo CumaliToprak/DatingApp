@@ -145,7 +145,7 @@ image::..\DatingApp\course-images\img7.png[]
 
 *to install dotnet entity framework tool:* via terminal type
 
-== Creating the Database using Entity Framework migrations
+=== Creating the Database using Entity Framework migrations
 
 image::..\DatingApp\course-images\img8.png[]
 image::..\DatingApp\course-images\img9.png[]
@@ -183,7 +183,7 @@ image::..\DatingApp\course-images\img11.png[]
 
 image::..\DatingApp\course-images\img12.png[]
 
-== Retrieving data from the Database
+=== Retrieving data from the Database
 
 inside Data -> DataContext.cs
 ----
@@ -219,7 +219,7 @@ after:
         [HttpGet("{id}")]
         public IActionResult GetValue(int id)
         {
-            var value = _context.Values.FirstOrDefault(x => x.Id == id);
+            var value = _context.Values.FirstOrDefault(x => x.Id === id);
 
             return Ok(value);
         }
@@ -239,7 +239,7 @@ image::..\DatingApp\course-images\img15.png[]
 image::..\DatingApp\course-images\img13.png[]
 image::..\DatingApp\course-images\img14.png[]
 
-== Making our code asynchronous
+=== Making our code asynchronous
 
 *inside ValuesController:*
 
@@ -257,14 +257,14 @@ image::..\DatingApp\course-images\img14.png[]
         [HttpGet("{id}")]
         public async Task<IActionResult> GetValue(int id)
         {
-            var value = await _context.Values.FirstOrDefaultAsync(x => x.Id == id);
+            var value = await _context.Values.FirstOrDefaultAsync(x => x.Id === id);
 
             return Ok(value);
         }
 ----
 
 
-== Creating the Angular application using AngularCLI
+=== Creating the Angular application using AngularCLI
 
 *https://cli.angular.io/*
 
@@ -278,7 +278,7 @@ ng serve
 
 image::..\DatingApp\course-images\img16.png[]
 
-== Adding VS Code extensions used in this course
+=== Adding VS Code extensions used in this course
 
 . Angular snippets - john papa
 . Angular files
@@ -291,7 +291,7 @@ image::..\DatingApp\course-images\img16.png[]
 . TSLint
 . angular2-switcher
 
-== 17. Making HTTP requests in Angular
+=== 17. Making HTTP requests in Angular
 
 Using right click in the src -> app folder create the new component named 'value'.
 
@@ -323,7 +323,7 @@ Access to XMLHttpRequest at 'http://localhost:5000/api/values' from origin 'http
 
 *NOT:* it is probably for angular do not know the domain name api has.
 
-== Adding CORS support to the API
+=== Adding CORS support to the API
 
 image::Desktop\DatingApp\course-images\img20.png[]
 image::Desktop\DatingApp\course-images\img21.png[]
@@ -332,16 +332,16 @@ image::Desktop\DatingApp\course-images\img21.png[]
 
 image::Desktop\DatingApp\course-images\img22.png[]
 
-== 17. Displaying data from the API on the html page
+=== 17. Displaying data from the API on the html page
 
 image::Desktop\DatingApp\course-images\img23.png[]
 image::Desktop\DatingApp\course-images\img24.png[]
 
-== 18. Adding Bootstrap and Font-Awesome to our Angular app
+=== 18. Adding Bootstrap and Font-Awesome to our Angular app
 
 image::Desktop\DatingApp\course-images\img25.png[]
 
-== 19. Adding GIT for source control
+=== 19. Adding GIT for source control
 
 *in the DatingApp folder:*
 ----
@@ -359,6 +359,236 @@ obj
 
 commit the change locally as 'Initial commit' on the left side bar.
 
-*go to the github and create new repository and get the remote address:*
+*go to the github and create new repository and get the remote address and paste to terminal inside of project directory*
+
+*to push local to remote:*
+
+
+image::Desktop\DatingApp\course-images\img27.png[]
+
 
 paste terminal inside your project directory
+
+=== 20. Summary of Section 2
+
+image::Desktop\DatingApp\course-images\img26.png[]
+
+== Security
+
+=== Introduction
+
+image::Desktop\DatingApp\course-images\img28.png[]
+
+=== Storing the passwords in the Database
+
+image::Desktop\DatingApp\course-images\img29.png[]
+image::Desktop\DatingApp\course-images\img30.png[]
+image::Desktop\DatingApp\course-images\img31.png[]
+
+---
+
+*Hashing+salting* => Çok daha güçlü şifreler oluşturulur. Aynı password için bile çok farklı şifrelemeler oluşturulur. Bunu rasgele randomly oluşan salting sağlar.
+
+---
+
+=== Creating the User model
+
+*inside model director => create User.cs file add the following props:*
+----
+namespace DatingApp.API.Models
+{
+    public class User
+    {
+        public int Id { get; set; } 
+        public string Username { get; set; }
+        public byte[] PasswordHash { get; set; }
+        public byte[] PasswordSalt { get; set; }
+    }
+}
+----
+
+*and the go to DataContext.cs file and update the file:*
+
+----
+using DatingApp.API.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace DatingApp.API.Data
+{
+    public class DataContext : DbContext //it is derived from Microsoft.EntityFrameworkCore. Need to include the library. 
+    {
+        public DataContext(DbContextOptions<DataContext> options) : base(options)
+        {
+        }
+
+        public DbSet<Value> Values { get; set; } // Values represents table name.
+        
+        public DbSet<User> Users { get; set; } //Users represent User table name
+    }
+}
+
+----
+
+
+*and then inside terminal:* 
+
+---
+
+dotnet ef migrations add AddedUserEntity
+
+*after that:*
+
+dotnet ef database update
+
+---
+
+*NOT:* If you look at the dbBrowser for sqlite you  can see the user table in there.
+
+=== The repository pattern
+
+image::Desktop\DatingApp\course-images\img32.png[]
+image::Desktop\DatingApp\course-images\img33.png[]
+
+
+=== Creating an Interface for the Repository
+
+*inside Data folder create new interface named IAuthRepository, and then add following line inside it*:
+
+----
+using System.Threading.Tasks;
+using DatingApp.API.Models;
+
+namespace DatingApp.API.Data
+{
+    public interface IAuthRepository
+    {
+         Task<User> Register(User user, string password);
+         Task<User> Login (string username, string password);
+         Task<bool> UserExists(string username);
+    }
+}
+----
+
+=== Creating the concrete Auth Repository and Register Method
+
+----
+using System;
+using System.Threading.Tasks;
+using DatingApp.API.Models;
+
+namespace DatingApp.API.Data
+{
+    public class AuthRepository : IAuthRepository
+    {
+        private readonly DataContext _context;
+        public AuthRepository(DataContext context) //to inject DataContext to this class.
+        {
+            _context = context;
+        }
+        public Task<User> Login(string username, string password)
+        {
+            throw new System.NotImplementedException();
+        }
+
+        public async Task<User> Register(User user, string password)
+        {
+            byte[] passwordHash, passwordSalt;
+
+            CreatePasswordHash(password, out passwordHash, out passwordSalt);
+
+            user.PasswordHash = passwordHash;
+            user.PasswordSalt = passwordSalt;
+
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
+
+            return user;
+
+        }
+
+        private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
+        {
+            using (var hmac = new System.Security.Cryptography.HMACSHA512())
+            {
+                passwordSalt = hmac.Key;
+                passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+            }
+
+        }
+
+        public Task<bool> UserExists(string username)
+        {
+            throw new System.NotImplementedException();
+        }
+    }
+}
+----
+
+image::Desktop\DatingApp\course-images\img34.png[]
+
+
+=== 7. Creating the Login repository method
+
+image::Desktop\DatingApp\course-images\img35.png[]
+image::Desktop\DatingApp\course-images\img36.png[]
+
+
+=== 8. Registering services in the Startup class
+
+---
+
+Şimdi oluşturduğumuz IAuthRepository ve AuthRepository classlarının application ile haberleşmesi için bunu startup classında service olarak tanımlamalıyız. Bu sayede bu repositoryleri classımıza enjekte etmiş olur.
+
+---
+
+image::Desktop\DatingApp\course-images\img37.png[]
+
+=== 9. Creating the Register method in our Auth Controller
+
+we Create new Controller inside Controllers named AuthController. And then filled the controller.
+
+----
+using System.Threading.Tasks;
+using DatingApp.API.Data;
+using DatingApp.API.Models;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DatingApp.API.Controllers
+{
+    [Route("api/[controller]")]  //means  ->  /api/Auth routes to AuthController
+    [ApiController]   //attribute
+    public class AuthController : ControllerBase //A base class for an MVC controller without view, we use angular for view implementation
+    {
+        private readonly AuthRepository _repo;
+        public AuthController(AuthRepository repo)
+        {
+            _repo = repo;
+        }
+
+
+        [HttpPost("register")]
+        //we will refactor parameter type later on. Because the parameter will come in json format.
+        public async Task<IActionResult> Register(string username, string password) 
+        {
+            username = username.ToLower();
+
+
+            if(await _repo.UserExists(username)) 
+                return BadRequest("Username already exists"); // to use this method we have to implemet controllerbase class to this controller.
+            //for Register method get user object. we create user object.
+            var userToCreate = new User{
+                Username = username
+            };
+
+            var createdUser = await _repo.Register(userToCreate, password);
+            
+            return StatusCode(201); //we will refactor this later on.
+
+        }    
+
+
+    }
+}
+----
+
+=== 10. Using DTOs (Data Transfer Objects)

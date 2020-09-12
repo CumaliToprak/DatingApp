@@ -32,6 +32,7 @@ namespace DatingApp.API
             services.AddControllers(); 
             services.AddCors(); //this is gonna make Cors service available. so that we can use this as a middleware. 
                                 // Ordering is not important here.
+            services.AddScoped<IAuthRepository, AuthRepository>(); //injection of AuthRepository and IAuthRepository
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -50,7 +51,7 @@ namespace DatingApp.API
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
-            {
+            {  
                 endpoints.MapControllers();
             });
         }
