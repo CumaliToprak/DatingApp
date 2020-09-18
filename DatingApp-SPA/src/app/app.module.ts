@@ -3,18 +3,27 @@ import { NgModule } from '@angular/core';
 import {HttpClientModule} from '@angular/common/http';  //imported for the http request.
 
 import { AppComponent } from './app.component';
-import { ValueComponent } from './value/value.component'; //this is added automatically when we add this component to our project.
+import { NavComponent } from './nav/nav.component';
+import { FormsModule } from '@angular/forms';
+import { AuthService } from './_services/auth.service';
+import { HomeComponent } from './home/home.component';
+import { RegisterComponent } from './register/register.component';
 
 @NgModule({
-  declarations: [	
+  declarations: [				
     AppComponent,
-      ValueComponent //this is added automatically when we add this component to our project.
+      NavComponent,
+      HomeComponent,
+      RegisterComponent
    ],
   imports: [
     BrowserModule,
-    HttpClientModule //imported for the http request.
+    HttpClientModule, //imported for the http request.
+    FormsModule
   ],
-  providers: [],
+  providers: [
+    AuthService //yeni bir servis oluşturduğumuzda buraya eklemeliyiz. Böylece diğer componentlere inject edilmeye hazır olur.
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

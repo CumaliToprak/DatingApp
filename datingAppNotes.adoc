@@ -739,3 +739,18 @@ $ git rm appsettings.json --cached
 
 Aslında tokena ait key'i production modda appsettings.json da değil bazı işlemlerle başka bir yerde gizleyerek tutarız. Buna ilerleyen bölümlerde bakıcaz.
 
+ 
+== Bölüm 4:Client side login and register
+
+=== Introduction
+
+image::Desktop\DatingApp\course-images\img54.png[]
+
+=== Creating the Navigation and Login form
+
+https://getbootstrap.com/docs/4.1/examples/jumbotron/?#
+
+. inspect -> copy the element
+. create a new component named nav
+. inside the html page of nav paste the element info    
+
