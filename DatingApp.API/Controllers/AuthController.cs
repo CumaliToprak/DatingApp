@@ -50,6 +50,8 @@ namespace DatingApp.API.Controllers
 
         public async Task<IActionResult> Login(UserForLoginDto userForLoginDto)
         {
+            //throw new Exception("Computer says no");
+
             var userFromRepo = await _repo.Login(userForLoginDto.Username.ToLower(), userForLoginDto.Password);
 
             if (userFromRepo == null)  //ıf the user dosent exist in db it return null.
@@ -62,11 +64,12 @@ namespace DatingApp.API.Controllers
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config.GetSection("AppSettings:Token").Value)); //we store the key in the AppSetting.Json file
-                                                                                                                    //.Value is used to get the value of this token
-            //encrypting the key using hashing algorithm                                                                  
+                                                                                                                       //.Value is used to get the value of this token
+                                                                                                                       //encrypting the key using hashing algorithm                                                                  
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
-            var tokenDescriptor = new SecurityTokenDescriptor{
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.Now.AddDays(1), //expire date is a day. It is just for training course purposes.
                 SigningCredentials = creds
@@ -76,12 +79,13 @@ namespace DatingApp.API.Controllers
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
 
-            return Ok(new {
+            return Ok(new
+            {
                 token = tokenHandler.WriteToken(token)
+
             });
+
         }
-
-
 
     }
 }

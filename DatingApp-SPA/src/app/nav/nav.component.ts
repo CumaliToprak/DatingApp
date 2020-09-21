@@ -20,7 +20,7 @@ export class NavComponent implements OnInit {
     this.authService.login(this.model).subscribe(next => {   //to returning value is observable, we must always subscribe to observable.
       console.log('Logged in successfully');                 //parameters of the subscribe method is completely optional.
     }, error => {
-      console.log('Failed to login');
+      console.log(error);
     })
   }
 

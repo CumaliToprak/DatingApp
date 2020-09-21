@@ -754,3 +754,124 @@ https://getbootstrap.com/docs/4.1/examples/jumbotron/?#
 . create a new component named nav
 . inside the html page of nav paste the element info    
 
+*NOT:* Bu modülün açıklamalarını angularda editör üzerinde yaptık. Kod satırları ile anlayabilirim.
+
+
+== Bölüm 5:Error Handling
+
+=== Handling exceptions in the API
+
+*500 internal error:* server errordur. angular tarafıyla  ilgisi yoktur. api tarafından oluşur.
+
+=== Setting up the Global exception handler in the API
+
+*NOT:* _Global exception Handling sayesinde try-catchle blokları ile biz uğraşmadan ASP .NET CORE bizim yerimize hataları handle eder._
+
+AuthController classının login metodunda tanımladığımız try-catch bloklarını kaldırırız öncelikle.
+
+image::Desktop\DatingApp\course-images\img55.png[]
+image::Desktop\DatingApp\course-images\img56.png[]
+
+Global exception handlera cause header eklemek için ekstra bir metoda ihtiyacımız var. Bu yüzden Helper folderı oluşturup Extensions classını ve AddApplicationError metodlarını static olarak oluştururuz.
+
+----
+using Microsoft.AspNetCore.Http;
+
+namespace DatingApp.API.Helpers
+{
+    public static class Extensions //Extension metodları içerecek class. Nesne örneğini oluşturmamak için static olarak tanımladık.
+    {
+        public static void AddApplicationError(this HttpResponse response, string message){ //to override http response : this HttpResponse response 
+            //reponse(global exception handler tarafından gönderilen response) a yeni header eklemek istediğimiz için:
+            response.Headers.Add("Application-Error", message);
+            response.Headers.Add("Access-Control-Expose-Headers","Application-Error");
+            response.Headers.Add("Access-Control-Allow-Origin","*"); //*: is a wildcard(joker) = yani tüm originlere izin ver demek.
+
+        }
+    }
+}
+----
+
+image::Desktop\DatingApp\course-images\img57.png[]
+----
+$ dotnet run
+----
+
+*Postmande istek yapalım:*
+
+image::Desktop\DatingApp\course-images\img58.png[]
+image::Desktop\DatingApp\course-images\img59.png[]
+
+
+*NOT:* Server tarafından gönderilen bu cause headerler sayesinde kullanıcı hatayla ilgili bilgilendirilmiş olunur.
+
+=== 4. Handling errors in Angular
+
+. *services klasörüne error.interceptor.ts adında boş bir file oluşturup aşağıdaki gibi şablonu oluştururuz.*
+
+Bu class yardımı ile apidan gelen hataları istediğimiz gibi filtreler angular tarafına, browser tarafına istediğimiz yalınlıkla ve uygunlukta göndeririz.
+
+----
+import {
+  HttpErrorResponse,
+  HttpEvent,
+  HttpHandler,
+  HttpInterceptor,
+  HttpRequest,
+  HTTP_INTERCEPTORS,
+} from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable, throwError } from 'rxjs';
+import { catchError } from 'rxjs/operators';
+
+//Bu bir servis classı olmamasına rağmen servis folderının içerisinde yazmamızın sebebi bu koyacak doğru yerin burası olması.
+
+@Injectable()
+export class ErrorInterceptor implements HttpInterceptor {
+  //HttpInterceptor Api tarafından gelen hataları tanıyacak ve yakalayacak
+  intercept(
+    req: HttpRequest<any>,
+    next: HttpHandler
+  ): Observable<HttpEvent<any>> {
+    //throw new Error('Method not implemented.'); 'ı sildik.
+    return next.handle(req).pipe(
+      catchError((error) => {
+        if (error.status === 401) {
+          return throwError(error.statusText); //angular componente fırlatılır.
+        }
+        if (error instanceof HttpErrorResponse) {
+          //this condition takes care of 500 error(internal error)
+          const applicationError = error.headers.get('Application-Error'); //Application-Error isimli headera sahip internal server errorı çeker.
+          if (applicationError) {
+            return throwError(applicationError);
+          }
+
+          const serverError = error.error;
+          let modalStateErrors = ''; //email, password dosent provide requirements örn: parola 3 haneden buyuk olmalı.
+          if (serverError.errors && typeof serverError.errors === 'object') {
+            //serverError.errors obje ise loop ile içerisini gezip elemanları kullancaz
+            for (const key in serverError.errors) {
+              if (serverError.errors[key]) {
+                modalStateErrors += serverError.errors[key] + '\n';
+              }
+            }
+          }
+          return throwError(modalStateErrors || serverError || 'server error'); //modalStateError boş ise serverErroru gönderir. burda serverError===error.error 'a eşittir. o da 'username already exists' 'e denk gelir diyebiliriz.
+          //Hiçbiri değilse 'server error' mesajlı exception atar. Sonradan gelip bu errorun ne olduğunu anlamaya çalışırız.
+          //serverError=error.error -> username already exists. : Sadece string mesaj olan error.
+        }
+      })
+    );
+  }
+}
+
+export const ErrorInterceptorProvider = {
+  provide: HTTP_INTERCEPTORS,
+  useClass: ErrorInterceptor,
+  multi: true, // HTTP_INTERCEPTORS can have many interceptor.
+};
+
+----
+
+image::Desktop\DatingApp\course-images\img60.png[]
+
