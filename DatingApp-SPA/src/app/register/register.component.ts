@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { AlertifyService } from '../_services/alertify.service';
 import { AuthService } from '../_services/auth.service';
 
 @Component({
@@ -12,16 +13,16 @@ model: any = {}
   @Input() valuesFromHome: any; //property ismi gönderilen propery ile aynı olmalı! Şimdi bu propertyi html içerisinde kullanabilirim.
   @Output() cancelRegister = new EventEmitter(); //child to parent property. We also called this as 'output property'
 
-  constructor(private authService: AuthService) { }
+  constructor(private authService: AuthService, private alertify: AlertifyService) { }
 
   ngOnInit() {
   }
 
   register(){
     this.authService.register(this.model).subscribe(() => { //register metod observable döndürdüğün subscribe olmalıyız.
-      console.log('Registiration is successfull');
+      this.alertify.success('Registiration is successfull');
     }, error => {
-      console.log(error);
+      this.alertify.error(error);
     });
   }
 

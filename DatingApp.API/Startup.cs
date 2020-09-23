@@ -58,7 +58,7 @@ namespace DatingApp.API
             if (env.IsDevelopment()) //development modda bu blok çalışır.
             {
                 app.UseDeveloperExceptionPage();
-            }else{ //Global Exception handler eklemek için. Development mode harici modlarda exception oluştuğunda bu blok çalışır.örn: Production mod.
+            }else{ //Global Exception handler eklemek için. Bu bizi hata yakalamak için bir sürü kod yazmaktan kurtarır. .net core bziim için tüm hataları global olarka handle eder. Development mode harici modlarda exception oluştuğunda bu blok çalışır.örn: Production mod.
                 app.UseExceptionHandler(builder => {
                     builder.Run(async context => {
                         context.Response.StatusCode = (int) HttpStatusCode.InternalServerError; //to use HttpStatusCode import using System.Net

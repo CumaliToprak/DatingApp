@@ -1,6 +1,10 @@
 import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import {HttpClientModule} from '@angular/common/http';  //imported for the http request.
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations'; //Ngx Bootstrap kullanırken bazı fonksionaliteler için gerekli.
+import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
+
+//node_modules'den gelen importları yukarı localden gelen importları aşağıya yazarız. Sadece tertip ve düzen için. Zorunlu değil.
 
 import { AppComponent } from './app.component';
 import { NavComponent } from './nav/nav.component';
@@ -20,7 +24,9 @@ import { ErrorInterceptorProvider } from './_services/error.interceptor';
   imports: [
     BrowserModule,
     HttpClientModule, //imported for the http request.
-    FormsModule
+    FormsModule,
+    BrowserAnimationsModule,
+    BsDropdownModule.forRoot()
   ],
   providers: [
     AuthService, //yeni bir servis oluşturduğumuzda buraya eklemeliyiz. Böylece diğer componentlere inject edilmeye hazır olur.
