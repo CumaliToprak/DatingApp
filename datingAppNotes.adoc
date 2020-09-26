@@ -1072,3 +1072,112 @@ image::Desktop\DatingApp\course-images\img71.png[]
 
 .primary yapmamızın sebebi dark olursa turuncuyu mora çeviriyordu.
 image::Desktop\DatingApp\course-images\img72.png[]
+
+== Routing in Angular
+
+===  Setting up routing in Angular
+
+Bu bölümde oluşturduğumuz yeni componentler arasında routing işlemini göreceğiz.
+
+öncelikle app folder içerisinde routes.ts file oluşturup aşağıdaki dolduralım.
+
+.Bunu kullanabilmek için app.module.ts'e import etmemiz gerekir.
+
+image::Desktop\DatingApp\course-images\img73.png[]
+
+----
+RouterModule.forRoot(appRoutes)
+----
+
+import kısmına yukardaki satırı ekleyip ilgili file'da yukarıya import ederiz .
+
+=== Protecting our routes with a route guard
+
+---
+
+Yetkisi olmayan kullanıcının url' i değiştirerek farklı routelara girmesini engellemek için *route guard* kullanılır.
+
+---
+
+. app -> _guard folder oluşturulur.
+. cd src/app/_guards
+. angular cli ile aşağıdaki komut çalıştırılır.
+. choose canActivate interface
+
+----
+$ ng g guard auth --skipTests
+----
+
+--skipTests : test istemiyoruz
+
+---
+
+Yukarıdaki çalıştırılan komutla auth.guard.ts oluşturulmuş olur. Default şablonda çok fazla şey vardır. Biz kendi ihtiyaçlarımıza göre şablonu düzelltik.
+
+---
+
+*auth.guard.ts :*
+
+
+----
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { AlertifyService } from '../_services/alertify.service';
+import { AuthService } from '../_services/auth.service';
+
+@Injectable({
+  providedIn: 'root',
+})
+export class AuthGuard implements CanActivate {
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private alertify: AlertifyService
+  ) {}
+
+  //Sadece true olduğunda bu route'u aktif et.
+  canActivate(): boolean {
+    if(this.authService.loggedIn()){
+      return true;
+    }
+
+    this.alertify.error('You shall not pass!!!');
+    this.router.navigate(['/home']);
+    return false;
+  }
+}
+
+----
+
+---
+
+Şimdi routes.ts de oluşturduğumuz path-component çiftlerinden hangisi korumak istiyosak canActivate[AuthGuard] ile koruruz.
+
+---
+
+*routes.ts:*
+
+----
+import { Routes } from '@angular/router';
+import { HomeComponent } from './home/home.component';
+import { ListsComponent } from './lists/lists.component';
+import { MemberListComponent } from './member-list/member-list.component';
+import { MessagesComponent } from './messages/messages.component';
+import { AuthGuard } from './_guards/auth.guard';
+
+export const appRoutes : Routes = [
+    {path: 'home', component: HomeComponent}, //path-component cifti yazılır. Order is important. Wildcard başta olsa hep aynı domaine gider mesela.
+    {path: 'members', component: MemberListComponent, canActivate: [AuthGuard]},
+    {path: 'messages', component: MessagesComponent},
+    {path: 'lists', component: ListsComponent},
+    {path: '**', redirectTo: 'home', pathMatch:'full'}, //joker: yukarıdakilerden herhangi biri ile eşleşmesse buraya yönledirilir. Angular first match mantığına göre çalışır. Hangi pathle eşleşirse oraya gider ilk.
+];
+
+
+----
+
+===  Protecting multiple routes with a single route guard using dummy routes
+
+
+Buradaki amaç her ayrı route için *canActivate: [AuthGuard]* kullanmak yerine bunlar için temsili bir parent root oluşturulup bunları merkezi bir yerden kontrol etmektir.
+
