@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DatingApp.API.Controllers
 {   
-    [Authorize]
+    [Authorize] // Bu metodlara, verilere ulaşacak kişiler yetkiye sahip olmalı
     [Route("api/[controller]")]  //means  ->  /api/valuescontroller routes to valuescontroller
     [ApiController]
     public class ValuesController : ControllerBase

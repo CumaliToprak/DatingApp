@@ -17,7 +17,7 @@ namespace DatingApp.API.Controllers
     public class AuthController : ControllerBase //A base class for an MVC controller without view, we use angular for view implementation
     {
         private readonly IAuthRepository _repo;
-        private readonly IConfiguration _config;
+        private readonly IConfiguration _config;  
         public AuthController(IAuthRepository repo, IConfiguration config)// Burdaki parametreyi daha önce AuthRepository yaptığımdan çalışmamıştı. Dikkat!
         {
             _config = config;
@@ -82,7 +82,6 @@ namespace DatingApp.API.Controllers
             return Ok(new
             {
                 token = tokenHandler.WriteToken(token)
-
             });
 
         }

@@ -1181,3 +1181,558 @@ export const appRoutes : Routes = [
 
 Buradaki amaç her ayrı route için *canActivate: [AuthGuard]* kullanmak yerine bunlar için temsili bir parent root oluşturulup bunları merkezi bir yerden kontrol etmektir.
 
+
+== Extending the API
+
+=== Extending the User Model
+
+*User.cs:* 
+
+----
+using System;
+using System.Collections.Generic;
+
+namespace DatingApp.API.Models
+{
+    public class User
+    {
+        public int Id { get; set; } 
+        public string Username { get; set; }
+        public byte[] PasswordHash { get; set; }
+        public byte[] PasswordSalt { get; set; }
+        public string Gender { get; set; }
+        public DateTime DateOfBirth { get; set; }
+        public string KnownAs { get; set; }
+        public DateTime Created { get; set; }
+        public DateTime LastActive { get; set; }
+        public string Introduction { get; set; }
+        public string LookingFor { get; set; }
+        public string Interests { get; set; }
+        public string City { get; set; }
+        public string Country { get; set; }
+        public ICollection<Photo> Photos { get; set; }
+    }
+}
+----
+
+*Newly created Photo.cs:* 
+
+----
+using System;
+
+namespace DatingApp.API.Models
+{
+    public class Photo
+    {
+        public int Id { get; set; } 
+        public string Url { get; set; }
+        public string Description { get; set; }
+        public DateTime DateAdded { get; set; }
+        public bool IsMain { get; set; }
+    }
+}
+----
+
+image::Desktop\DatingApp\course-images\img74.png[]
+
+*NOT:* Dbset'e yeni bir table ekledikten sonra yeni bir migration oluşturacağımız zaman projenin çalışmasını durdurmamız gerekir. Çünkü entity framework or dotnet ef cli projeyi build edecek.
+
+----
+
+$ dotnet ef migrations add ExtendedUserClass
+
+----
+
+Yeni migration classları migration foldera eklenir.
+
+
+=== Exploring Entity Framework Migrations
+
+image::Desktop\DatingApp\course-images\img75.png[]
+
+Bunu manuel olarak da değiştiremeyiz.
+
+*Bu migrationı database update edelim:*
+
+----
+$ dotnet ef database update
+----
+
+*Bu adımdan sonra bu son migrationı silemeyiz:*
+
+----
+$ dotnet ef migrations remove
+----
+
+*Komudu hata verir.*
+
+---
+
+The migration '20200926131158_ExtendedUser' has already been applied to the database. Revert it and try again. If the migration has been applied to other databases, consider reverting its changes using a new migration.
+
+---
+
+*Eski haline alma gibi işlemi sqlite izin vermiyor. Bu yüzden database'i drop edip recreate ederiz.*
+
+
+----
+$ dotnet ef database drop
+----
+
+Bu işlem migrationslara dokunmaz. Aynı şekilde kalır.
+
+*Databaseden drop ettikten sonra şimdi last migrationı remove edebiliriz.*
+
+----
+$ dotnet ef migrations remove
+----
+
+
+=== Entity Framework Relationships
+
+Entity Frameworke user ile photo arassındaki ilişkiyi manuel olarak söylememiz gerekicek.
+
+
+image::Desktop\DatingApp\course-images\img77.png[]
+
+
+----
+$ dotnet ef migrations add ExtendendUserClass
+----
+
+image::Desktop\DatingApp\course-images\img76.png[]
+    
+*Şimdi user silindiği zaman o usera ait fotolarda ilişkili olarak silinmiş olacak.*
+
+
+=== Seeding Data to the Database 
+
+https://www.json-generator.com/
+
+Bu siteden json formatta randomly generated data elde edebiliriz. kullandığımız script kursta var. Şuan için NEİL'in oluşturduğu kullanıcıları kullanıcaz.
+
+Data klasöründe -> UserSeedData.json file oluşturup içerisine json formatta oluşturulmuş kullanıcı datalarını ekleriz.
+
+===  Seeding Data to the Database Part 2
+
+json formattaki dataları user modelle ilişkilendirmek için Seed.cs classını oluşturduk.
+
+----
+using System.Collections.Generic;
+using System.Linq;
+using DatingApp.API.Models;
+using Newtonsoft.Json;
+
+namespace DatingApp.API.Data
+{
+    public class Seed
+    {
+        public static void SeedUsers(DataContext context)
+        {
+            if (!context.Users.Any()) //Hiç kullanıcı var mı?
+            { //to use Any() method import using.linq
+                var userData = System.IO.File.ReadAllText("Data/UserSeedData.json");
+                var users = JsonConvert.DeserializeObject<List<User>>(userData);  //to user JsonConvert import Newtonsoft.Json
+                foreach (var user in users)
+                {   
+                    byte[]  passwordHash, passwordSalt;
+                    CreatePasswordHash("password",out passwordHash,out passwordSalt); //passwordların hepsinin değeri password old. direkt yazdık.
+
+                    user.PasswordHash = passwordHash;
+                    user.PasswordSalt = passwordSalt;
+                    user.Username = user.Username.ToLower();
+                    context.Users.Add(user);
+                }
+                    context.SaveChanges(); //asyn olarak yapmaya gerek yok çünkü program çalışmaya başladığında ilk olarak burası çalışcak.
+            }
+
+        }
+
+
+        //Bu metodu AuthRepository classından getirdik.
+        //Bu metodu sadece burda kullanacağımız için AuthRepositoryde public yapmadık.
+        private static void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
+        {
+            using (var hmac = new System.Security.Cryptography.HMACSHA512())
+            {
+                passwordSalt = hmac.Key;
+                passwordHash = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(password));
+            }
+
+        }
+    }
+}
+----
+
+bunu program.cs classına bağladık.
+
+----
+using System;
+using DatingApp.API.Data;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace DatingApp.API
+{
+    public class Program
+    {
+        public static void Main(string[] args)
+        {
+            var host = CreateHostBuilder(args).Build();
+            //DataContext'i parametre olarak gönderdikten sonra ondan kurtulmak istiyoruz. O yüzden using kullanırız.
+            using(var scope = host.Services.CreateScope()){ // to use CreateScope() method import Microsoft.Extensions.DependencyInjection;
+                var services = scope.ServiceProvider;
+                //Bu metod main metod olduğundan ve ilk çalıştırılıcak metod olduğundan burada bir exception handling middleware yok bu yüzden try-catch kullanırız.
+                try
+                {
+                    var context = services.GetRequiredService<DataContext>(); //DataContext'i parametre olarak göndereceğimiz için alırız.
+                    context.Database.Migrate();// bu komut yardımı ile her dotnet run/watch run yaptığımızda databasei kontrol edip update 
+                    //edilmemiş migrations varsa update eder. Bizim ayrıca dotnet ef database update yapmamıza gerek yok artık.
+                    Seed.SeedUsers(context);
+                } 
+                catch (Exception ex)
+                {
+                    var logger = services.GetRequiredService<ILogger<Program>>();
+                    logger.LogError(ex, "An error occured during migration");   
+                }
+            }
+
+            host.Run();
+        }
+
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
+    }
+}
+
+----
+
+=== Creating a new repository for our API
+
+*Öncelikle delete, add, save , get user metodları için interface ve class repository pattern oluşturduk.*
+
+*IDatingRepositor:*
+
+----
+using System.Threading.Tasks;
+using DatingApp.API.Models;
+
+namespace DatingApp.API.Data
+{
+    public interface IAuthRepository
+    {
+         Task<User> Register(User user, string password);
+         Task<User> Login (string username, string password);
+         Task<bool> UserExists(string username);
+    }
+}
+----
+
+*DatingRepository:*
+
+----
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using DatingApp.API.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace DatingApp.API.Data
+{
+    public class DatingRepository : IDatingRepository
+    {
+        private readonly DataContext _context;
+        public DatingRepository(DataContext context)
+        {
+            _context = context;
+        }
+        public void Add<T>(T entity) where T : class
+        {
+            _context.Add(entity); //şuan için asyn yapmaya gerek yok çünkü biz update database yapana kadar bellekte(contexte) bekleyecek.
+        }
+
+        public void Delete<T>(T entity) where T : class
+        {
+            _context.Remove(entity);
+        }
+
+        public async Task<User> GetUser(int id)
+        {
+            //to use Include import : using Microsoft.EntityFrameworkCore;
+            var user = await _context.Users.Include(p => p.Photos).FirstOrDefaultAsync(u => u.Id == id);  //photos navigation property olduğu için include metodunu kullandık.
+
+            return user;
+        }
+
+        public async Task<IEnumerable<User>> GetUsers()
+        {
+            var users = await _context.Users.Include(p => p.Photos).ToListAsync();
+
+            return users;
+        }
+
+        public async Task<bool> SaveAll()
+        {
+            return await _context.SaveChangesAsync() > 0; //Eğer databaseden dönen kayıt sayımız sıfrdan büyükse true , değilse false döner.
+        }
+    }
+}
+----
+
+Bu clası application da kullanabilmek için startup.cs de servis olarak tanımlamalıyız.
+
+----
+services.AddScoped<IDatingRepository,DatingRepository>();
+----
+*_Bir sonraki kısımda controller tanımlayıp bu concrete metod yardımıyla çektiğimiz verileri clienta verceğiz._*
+
+=== Creating the Users Controller
+
+https://docs.microsoft.com/en-us/aspnet/core/migration/22-to-30?view=aspnetcore-3.1&tabs=visual-studio#newtonsoftjson-jsonnet-support
+
+Daha önceleri json responları veyahut dotnet objelerini json objelere çevirmek için Newtonsoft third part software kullanılıyordu. dotnet 3.0 surumunden sonra microsoft System.Text.json ı tanıttı. Fakat şuan bu paket henüz hazır değil ve bizim kullandığımız bazı özellikleri içermiyor. Şimdi burada amacımız applicationı newtonsoft u kullanmak için ayarlamak.
+
+*NuGet package manager dan :*
+
+---
+
+Microsoft.AspNetCore.Mvc.NewtonsoftJson
+
+---
+
+paketini indiririz.
+
+* startup.cs classına gidip*
+
+before:
+
+image::Desktop\DatingApp\course-images\img78.png[]
+
+after:
+
+----
+$  services.AddControllers().AddNewtonsoftJson(); 
+----
+
+*Şimdi System.Text.Json yerine Newtonsoftu kullanıyor gibi davranacak.*
+
+*Şimdi UsersController.cs classını controller klasörü içerisinde oluşturup içersini ve şablonunu aşağıdaki gibi doldururuz*
+
+----
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using DatingApp.API.Data;
+using System.Threading.Tasks;
+
+namespace DatingApp.API.Controllers
+{
+    // Bu metodlara, verilere ulaşacak kişiler yetkiye sahip olmalı
+    [Authorize] //to use import: Microsoft.AspNetCore.Authorization;
+    [Route("api/[Controller]")] //Bu spesicif controllera ulaşmak için bu yapıyı kullanırız. bu route bizi : api/users'a yönlendirir.
+    [ApiController]
+    public class UsersController : ControllerBase
+    {
+        private readonly IDatingRepository _repo;
+        public UsersController(IDatingRepository repo) //Burda concrete class reposunu değil interface repoyu çağırıyoruz. Dikkat!
+        {
+            _repo = repo;
+        }
+
+        [HttpGet] //when request to 'localhost:5000/api/Users bu metod çalışır.
+        public async Task<IActionResult> GetUsers(){
+            var users = await _repo.GetUsers();
+
+            return Ok(users);
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetUser(int id){
+            var user = await _repo.GetUser(id);
+            return Ok(user);
+        }
+
+
+
+    }
+}
+----
+
+*Her zaman client tarafa geçmeden api'yı postman ile test etmeliyiz. Bunun için login olmamız lazım ve bu tokenı headır kısma ekleyip '_localhost:5000/api/users_'
+adresine get request yaparız*
+
+
+*Bunu yaptığımızda hata alırız. postmande bu hatayı görmemiş olsak da terminale gittiğimizde bu hatayı görebiliriz.*
+
+*Hata:* self referencing loop detected for property user bla bla bla
+
+https://stackoverflow.com/questions/7397207/json-net-error-self-referencing-loop-detected-for-type
+
+*Bu hatanın sebebi* user classın içerisinde photos için navigation property var photoya gidince de userı gösteren pointer var, server bu response'u serialize etmek isterken bu döngüyü görür ver der ki this self referencig loop galiba. xd bu bizim problem değil bu yüzden servera biz ne yaptığımızı biliyoz bize hata verme diyeceğiz. Mvc'ye bu hatayı ignore et diyeceğiz de diyebiliriz kısaca.
+
+-> startup.cs'de şunu ekleriz.
+
+----
+ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuerSigningKey = true, // to check our key is valid.
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8 //SymmetricSecurityKey wants the key as a byte array. for that reaseos we converted.
+                            .GetBytes(Configuration.GetSection("AppSettings:Token").Value)),
+                        ValidateIssuer = false, //our Issuer localhost
+                        ValidateAudience = false  //our Audience localhost as well.
+                    };
+                });
+                
+----
+
+=== Shaping the data to return with DTOs
+
+User bilgileri ile beraber passwordHash ve passwordSalt da gidiyor. Biz bunu istemiyoruz. Bunu da DTO sayesinde sağlayacağız.
+
+*UserForListDto.cs ve UserForDetailedDto.cs classlarını oluştururuz*
+
+*UserForListDto.cs:*
+
+----
+using System;
+
+namespace DatingApp.API.Dtos
+{
+    public class UserForListDto
+    {
+        public int Id { get; set; }
+        public string Username { get; set; }
+        public string Gender { get; set; }
+        public int Age { get; set; } //Birthdate yerine değiştirdik bunu.
+        public string KnownAs { get; set; }
+        public DateTime Created { get; set; }
+        public DateTime LastActive { get; set; }
+        public string City { get; set; }
+        public string Country { get; set; }
+        public string PhotoUrl { get; set; } //ekstradan bunu ekledik
+    }
+}
+----
+ 
+*UserForDetailedDto.cs:*
+
+----
+using System;
+using System.Collections.Generic;
+using DatingApp.API.Models;
+
+namespace DatingApp.API.Dtos
+{
+    public class UserForDetailedDto
+    {
+        public int Id { get; set; }
+        public string Username { get; set; }
+        public string Gender { get; set; }
+        public int Age { get; set; }
+        public string KnownAs { get; set; }
+        public DateTime Created { get; set; }
+        public DateTime LastActive { get; set; }
+        public string Introduction { get; set; }
+        public string LookingFor { get; set; }
+        public string Interests { get; set; }
+        public string City { get; set; }
+        public string Country { get; set; }
+        public string PhotoUrl { get; set; }
+        public ICollection<Photo> Photos { get; set; }
+    }
+}
+----
+
+
+Kullanıcıları çekmek için istek geldiği zaman user classındaki propertylere ait verileri değil dtolardaki proplara göre verileri göndermek istiyoruz. Bunu controllerda uzunca kod yazarak manuel olarak yapabilriz. Fakat bu çok yorucu olur. bunun bizim yerimize yapacak bir tool var.
+
+=== Using AutoMapper Part 1
+
+Bu entitylerimizi(models) Dto'larla eşler.
+
+. AutoMapper.Extensions.Microsoft.DependencyInjection nuget package managerdan indirilir.
+
+. Startup.cs classına gidip AutoMapper ı servis olarak kaydederiz. Böyle onu applicationun her tarafına inject edebiliriz.
+
+. Sonra UsersControllerda mapperı servis olarak inject ederiz.
+
+. User controllerda getUser/s metodları yeniden mapperla modifiye ederiz.
+
+. Helper klasöründe AutoMapperProfiles.cs classı oluşturulur. bu classın amacı tüm mapped class ve dtoları burda eklemek ve AutoMapperın işlevini yapması için bu gerekli.
+
+. Bundan sonra user classındaki bir property isminin aynısı esleştirilmis dto'da da varsa bunu anlar ve buna göre davranır.(akkıllı bir şey xd)
+
+. Değişiklikleri görmek için postmanda denemek istersek hata alırız. Çünkü ctrl+c yapıp kestrel servisi tekrar başlatmalıyız. Yoksa hata alırız.
+
+*Not:* tüm userlar için postmanla istekte bulunduğumuz zaman problem yok tum userlar istediğimiz şekilde UserForListsDto'ya uygun olara gelir. fakat individual user icin requestte bir problem var. Tum fotoları da cektiğimiz için ve photo classının icinde user referansı(full user object) oldugundan tum user bilgilerini de objenin icersinde gönderir. Biz bunu istemiyoruz. Bir sonraki partta bu konuyu handle edeceğiz.
+
+
+Bunun için PhotosForDetailedDto.cs oluştururuz. 
+
+----
+using System;
+
+namespace DatingApp.API.Dtos
+{
+    public class PhotosForDetailedDto
+    {
+        public int Id { get; set; }
+        public string Url { get; set; }
+        public string Description { get; set; }
+        public DateTime DateAdded { get; set; }
+        public bool IsMain { get; set; }
+    }
+}
+----
+
+*UserForDetailedDto.cs de asagıdaki değişikliiği yaparız.*
+
+----
+public ICollection<PhotosForDetailedDto> Photos { get; set; }
+----
+
+
+*Bu mapping işlemini AutoMapperProfile.cs e ekleriz.*
+
+----
+CreateMap<Photo, PhotosForDetailedDto>();
+----
+
+
+user/users requestlerinde gönderilen photolara url eklemek ve age propertyi ayarlamak için de AutoMapper'a gerekli kodlar eklenir.
+
+----
+ CreateMap<User, UserForListDto>()
+            .ForMember(dest => dest.PhotoUrl, opt =>
+                opt.MapFrom(src => src.Photos.FirstOrDefault(p => p.IsMain).Url))
+            .ForMember(dest => dest.Age, opt => opt.MapFrom(src => src.DateOfBirth.CalculateAge()));
+            CreateMap<User, UserForDetailedDto>()
+            .ForMember(dest => dest.PhotoUrl, opt =>
+                opt.MapFrom(src => src.Photos.FirstOrDefault(p => p.IsMain).Url))
+            .ForMember(dest => dest.Age, opt => opt.MapFrom(src => src.DateOfBirth.CalculateAge()));
+----
+
+== Building a great looking User Interface (Legacy)
+
+=== Introduction
+
+
+image::Desktop\DatingApp\course-images\img79.png[]
+
+
+=== Introduction to Interfaces in Typescript
+
+image::Desktop\DatingApp\course-images\img80.png[]
+
+=== Adding Interfaces to our Typescript code
+
+
+
