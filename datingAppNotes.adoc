@@ -1734,5 +1734,181 @@ image::Desktop\DatingApp\course-images\img80.png[]
 
 === Adding Interfaces to our Typescript code
 
+*src => app içersinde _models klasörü oluşturup Api daki Dtolarımıza denk dusecek sekilde user ve photo interfaceleri oluşturup propertyleri Dto daki propertylere göre doldururuz.*
+
+*user*
+
+----
+import { Photo } from './photo';
+
+export interface User {
+    id: number;  //lower case for just by convention
+    username: string;
+    knownAs: string;
+    age: number;
+    gender: string;
+    created: Date;
+    lastActive: Date;
+    photoUrl: string;
+    city: string;
+    country: string;
+    interests?: string //when we want something optional we use question mark.
+    introduction?: string;
+    lookingFor?: string;
+    photos?: Photo[];
+}
+
+----
+
+*photo*
+
+----
+export interface Photo {
+    id: number;
+    url: string;
+    desctiption: string;
+    dateAdded: Date;
+    isMain: boolean;
+}
+
+----
+
+Sonra user datalarını çekmek için user servisi oluştururuz.
+
+*user.service.ts*
+
+----
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
+import { environment } from 'src/environments/environment';
+import { User } from '../_models/user';
+
+const httpOptions = {
+  headers: new HttpHeaders({
+    Authorization: 'Bearer ' + localStorage.getItem('token'),
+  }),
+};
+
+@Injectable({
+  providedIn: 'root',
+})
+export class UserService {
+  baseUrl = environment.apiUrl;
+
+  constructor(private http: HttpClient) {}
+
+  getUsers(): Observable<User[]> {
+    return this.http.get<User[]>(this.baseUrl + 'users', httpOptions);
+  }
+
+  getUser(id): Observable<User> {
+    return this.http.get<User>(this.baseUrl + 'users/' + id, httpOptions); //get metodu option alır. bu option header alabilir. headerda da yetkilendirme için token bearer bulunabilir.
+  }
+}
+
+----
+
+apiUrl angular cli la oluşturulan environmen.ts içerisine yazdık. Böylece global olarak kullanabiliriz. Production moda geçtiğimiz zaman (projeyi publish ettiğimiz zman) environment.prod.ts e ekleriz.
+
+
+*'dotnet watch run' ve 'ng serve' yapıp login olduktan sonra memberslara erişilir.*
+
+
+=== Creating Member Cards to display on our Member list page
+
+
+*when we create a component outside of app folder angular no longer imports its references to app.module.ts file we should add it manually.*
+
+*for example:* src => app => members => member-card component
+
+*Not:* Bu adımdan sonraki style ve angular adımlarını biraz atladım ta ki otomatik token gönderimine kadar. Bir sonraki başlık onu anlatıyor.
+
+
+=== Using Auth0 JwtModule to send up jwt tokens automatically
+
+Daha önce userları ve userlara ait bilgileri almak için için requestimize header ekleyip authorization tokenı da göndermiştik. Bu adımda bu tokenı manuel olarak değil otomatik olrak token göndermeyi göreceğiz.
+
+*inside app.module.ts* import _'import { JwtModule } from '@auth0/angular-jwt';'_ and _import { HttpClientModule } from '@angular/common/http';_ => then :
+
+
+*import bölümüne aşağıdaki kod satırını yazarız.*
+
+----
+JwtModule.forRoot({
+      config: {
+        tokenGetter: tokenGetter ,
+        allowedDomains: ['localhost:5000'], //izin verilen domainler
+        disallowedRoutes: ['localhost:5000/api/auth'] //bu routa izin verme demek.
+      },
+    })  
+----
+
+Bu kod satırı daha önceden header akleyerek oluşturduğumuz token gönderme işlemini auth0 kütüphanesi sayesinde  otomatik olarak yapıyor.
+
+uygulamaya dönüp => inspect => network yapıp => kullanıcı adı ve şifre girip login olursak => bu kullanıcıyla eşleşen kullanıcılar da listlenir.
+
+===  Kişi detay komponenti ekleme
+
+*memberDetail componenti oluşturup aşağıdaki gibi doldururuz*
+
+----
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { User } from 'src/app/_models/user';
+import { AlertifyService } from 'src/app/_services/alertify.service';
+import { UserService } from 'src/app/_services/user.service';
+
+@Component({
+  selector: 'app-member-detail',
+  templateUrl: './member-detail.component.html',
+  styleUrls: ['./member-detail.component.scss'],
+})
+export class MemberDetailComponent implements OnInit {
+  user: User;
+
+  constructor(
+    private userService: UserService,
+    private alertify: AlertifyService,
+    private route: ActivatedRoute
+  ) {}
+
+  ngOnInit() {
+    this.loadUser();
+  }
+
+  loadUser() {
+    this.userService.getUser(+this.route.snapshot.params['id']).subscribe( //url'deki id isimli parametreyi al.(bu id'yi routes.ts de belirlemiştik)
+      (user: User) => {
+        this.user = user;
+      },
+      (error) => {
+        this.alertify.error(error);
+      }
+    );
+  }
+}
+----
+
+*routes.ts 'e aşağıdaki satırı ekleriz.*
+
+----
+      { path: 'members/:id', component: MemberDetailComponent }, // :id => route parametresini böyle tanımlarız.
+----
+
+*member-card.component.html den kullanıcı detay butonuna basıldığında yönledirilecek route bilgilerni eklriz.*
+
+----
+[routerLink]="['/members/', user.id]"
+----
+
+*member-detail.component.html:*
+
+----
+<p>
+  {{user.knownAs}}
+</p>
+
+----
 
 

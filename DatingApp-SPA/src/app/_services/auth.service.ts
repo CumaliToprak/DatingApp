@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { JwtHelperService } from '@auth0/angular-jwt'; //angular web token servisini kullanmak için.
 import { map } from 'rxjs/operators'; //to use map()
+import { environment } from 'src/environments/environment';
 
 @Injectable({ //Bir şeyleri servisimize eklememizi sağlar. Componentlerde injectable decoretor görünmemesinin sebebi onlar default olarak injectable.
   providedIn: 'root' // providedIn: servisimize ve componentlere bu servisin hangi module tarafından sağlandığını söyler. ( burda ->app.module.ts)
@@ -10,7 +11,7 @@ export class AuthService {
 //_servise -> alt çizgiyle başlamamızın sebebi app folderin en ustune gelmesi için bu klasörün. Özel bir sebebi yok.
 //servisler component değildir.
 
-baseurl = 'http://localhost:5000/api/auth/';
+baseurl = environment.apiUrl+'auth/';
 jwtHelper = new JwtHelperService();
 decodedToken : any;
 
