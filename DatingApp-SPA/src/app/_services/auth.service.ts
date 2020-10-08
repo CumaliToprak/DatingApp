@@ -20,7 +20,6 @@ constructor(private http: HttpClient) { }
   login(model: any){
     return this.http.post(this.baseurl + 'login', model).pipe(
       map((response: any) => {
-        
         const user = response;
         console.log(user);
         if( user) {
@@ -39,7 +38,7 @@ constructor(private http: HttpClient) { }
     const token = localStorage.getItem('token'); 
     return !this.jwtHelper.isTokenExpired(token);//token kullanımda mı? token var mı? veya tokenla ilgili başka bir problem mi var. Boolean değer döndürür. Tersini almamızın sebebi eğer kullanımda ise false döndürür, biz de tersini alırız.
     // jwthelper ile istokenExpired diye kontrol etmek daha önce token var mı? kontrolünden daha sağlıklı bir kod biçimiidr.
-    //ama bu app güvenligi ile ilgi bir sey degistirmez. Daha ince de client bizim token keyimizi öğrenemezdi. Çünkü yollamıyoruz api'dan.
+    //ama bu app güvenligi ile ilgi bir sey degistirmez. Daha önce de client bizim token keyimizi öğrenemezdi. Çünkü yollamıyoruz api'dan.
   }
 
 }

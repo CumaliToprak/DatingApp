@@ -26,7 +26,7 @@ export class NavComponent implements OnInit {
         this.alertify.success('Logged in successfully'); //parameters of the subscribe method is completely optional.
       },
       (error) => {
-        this.alertify.error(error);
+      this.alertify.error(error);
       },
       () =>{
         //login olduktan sonra: redirect to members

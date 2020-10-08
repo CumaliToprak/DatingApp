@@ -20,4 +20,8 @@ export class UserService {
   getUser(id): Observable<User> {
     return this.http.get<User>(this.baseUrl + 'users/' + id); //get metodu option alır. bu option header alabilir. headerda da yetkilendirme için token bearer bulunabilir.
   }
+
+  updateUser(id: number, user: User){
+    return this.http.put(this.baseUrl + 'users/' + id, user);
+  }
 }
