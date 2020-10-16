@@ -32,6 +32,8 @@ namespace DatingApp.API
 
         public IConfiguration Configuration { get; }
 
+
+        //Bu metod servislerimiz için konteynır görevi görür.
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
@@ -44,6 +46,7 @@ namespace DatingApp.API
             });
             services.AddCors(); //this is gonna make Cors service available. so that we can use this as a middleware. 
                                 // Ordering is not important here.
+            services.Configure<CloudinarySettings>(Configuration.GetSection("CloudinarySettings")); //appsettings.json'a koyduğumuz Cloudinary bilgilerimizi oluşturdugumuz C# cloudinary classındaki propertylerle bağlar.
             services.AddAutoMapper(typeof(DatingRepository).Assembly);  //1-Bu satrı nereye yazdığımız önemli değil bu scope içerisinde. 2-AutoMapper profilinin oluşturulacağı assemblynin yerini parametre olrak vermeliyiz.
             services.AddScoped<IAuthRepository, AuthRepository>(); //injection of AuthRepository and IAuthRepository
             services.AddScoped<IDatingRepository, DatingRepository>();

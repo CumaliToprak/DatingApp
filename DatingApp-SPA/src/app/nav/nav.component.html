@@ -17,6 +17,9 @@
 
   <div *ngIf="loggedIn()" class="dropdown" dropdown >
     <!-- *ngIf="loggedIn()" -> true dondururse bu div'in içindekiler çalışır. -->
+    <span>
+      <img src="{{photoUrl}}" alt="">
+    </span>
     <a class="dropdown-toggle text-light" dropdownToggle> 
       <!--text-light: rengi beyazlaştırır.-->
       Welcome {{authService.decodedToken.unique_name }} <!--authService' in altında sarı veya kırmızı çizgi yanıltıcı. Pivate olarak bu componente enjekte edilmiş bu servis html de kullanılabilir.-->

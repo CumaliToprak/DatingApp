@@ -14,6 +14,7 @@ import { UserService } from 'src/app/_services/user.service';
 export class MemberEditComponent implements OnInit {
   @ViewChild('editForm', { static: true }) editForm: NgForm; //editForm'a ulaşıp state ni restore etmek için bunu eklememiz gerekir.
   user: User;
+  photoUrl: string;
   @HostListener('window:beforeunload', ['$event']) //web sitesi tabı kapatılmak istendiğinde değişiklik yapılmışsa uyarı popun'ının görünmesi için.
   unloadNotification($event: any) {
     if (this.editForm.dirty) {
@@ -32,6 +33,7 @@ export class MemberEditComponent implements OnInit {
     this.router.data.subscribe((data) => {
       this.user = data['user'];
     });
+    this.authService.currentPhotoUrl.subscribe(photoUrl => this.photoUrl = photoUrl);
   }
 
   updateUser() {
@@ -48,4 +50,9 @@ export class MemberEditComponent implements OnInit {
         }
       );
   }
+
+  updateMainPhoto(photoUrl){
+    this.user.photoUrl = photoUrl;
+  }
+
 }

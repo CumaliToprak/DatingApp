@@ -1911,4 +1911,13 @@ export class MemberDetailComponent implements OnInit {
 
 ----
 
+== Adding Photo upload functionality to the application
+*NOT:* Neil'ın en önem verdiği kısım burasıymış.
+
+to store photos we'll use *Cloudinary*.
+
+image::Desktop\DatingApp\course-images\img82.png[]
+
+
+
 
