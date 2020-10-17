@@ -1,3 +1,4 @@
+import { JsonpInterceptor } from '@angular/common/http';
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { FileUploader } from 'ng2-file-upload';
 import { Photo } from 'src/app/_models/photo';
@@ -78,11 +79,26 @@ export class PhotoEditorComponent implements OnInit {
           this.currentMain = this.photos.filter(p => p.isMain === true)[0];
           this.currentMain.isMain = false;
           photo.isMain = true;
-          this.getMemberPhotoChange.emit(photo.url);
+          this.authService.changeMemberPhoto(photo.url);
+          this.authService.currentUser.photoUrl = photo.url;
+          localStorage.setItem('user', JSON.stringify(this.authService.currentUser)); //override user that is in the local storage
         },
         (error) => {
           this.alertify.error(error);
         }
       );
   }
+
+  deletePhoto(id: number){
+    this.alertify.confirm('Are you sure you want to delete this photo?', () => {
+      this.userService.deletePhoto(this.authService.decodedToken.nameid, id).subscribe(() => {
+        this.photos.splice(this.photos.findIndex(p => p.id === id), 1);
+        this.alertify.success('Photo has been deleted');
+      }, error => {
+        this.alertify.error('Failed to delete the photo');
+      });
+    });
+  }
+
+
 }
